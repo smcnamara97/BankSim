@@ -9,7 +9,7 @@ public class Account {
 
     private volatile int balance;
     private final int id;
-    private final Bank myBank;
+    private Bank myBank;
 
     public Account(Bank myBank, int id, int initialBalance) {
         this.myBank = myBank;
@@ -20,11 +20,21 @@ public class Account {
     public int getBalance() {
         return balance;
     }
+    
+    public synchronized void waitForSufficientFunds(int amount){
+        while(myBank.isOpen() && amount >= balance){
+            try{
+                wait();
+            } catch (InterruptedException ex){
+                //ignore
+            }
+        }
+    }
 
-    public boolean withdraw(int amount) {
+    public synchronized boolean withdraw(int amount) {
         if (amount <= balance) {
             int currentBalance = balance;
-//            Thread.yield(); // Try to force collision
+            Thread.yield(); // Try to force collision
             int newBalance = currentBalance - amount;
             balance = newBalance;
             return true;
@@ -33,11 +43,12 @@ public class Account {
         }
     }
 
-    public void deposit(int amount) {
+    public synchronized void deposit(int amount) {
         int currentBalance = balance;
-//        Thread.yield();   // Try to force collision
+        Thread.yield();   // Try to force collision
         int newBalance = currentBalance + amount;
         balance = newBalance;
+        notifyAll();
     }
     
     @Override
